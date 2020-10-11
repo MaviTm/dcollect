@@ -5,6 +5,22 @@ function dc_error(...a) {
     console.error(...a);
 }
 
+function dc_isArray(variable){
+    return Array.isArray(variable);
+}
+
+function dc_isObject(variable){
+    return typeof variable === 'object' && Array.isArray(variable) === false && variable !== null;
+}
+
+function dc_isFunction(variable){
+    return typeof variable === 'function';
+}
+
+function _availableSelfData(data){
+    return dc_isArray(data) ? data : Object.values(data);
+}
+
 class dcollect{
 
     constructor(data){
@@ -13,7 +29,7 @@ class dcollect{
 
     query(){
         if(Array.isArray(this.data)){
-            return new _builder(Array.from(this.data));
+            return new _builder(Array.from(this.data), this);
         }
         return new _builder(Object.assign({}, this.data), this);
     }
@@ -87,6 +103,35 @@ class _builder{
         return this;
     }
 
+    getColumn(field){
+        let rv = [];
+        let rData = _availableSelfData(this.data);//Array.isArray(this.data) ? this.data : Object.values(this.data);
+        rData.forEach(function (item) {
+            if(item.hasOwnProperty(field)){
+                let a = {};
+                a[field] = item[field];
+                rv.push(a);
+            }
+        });
+        this.data = rv;
+        return this;
+    }
+
+    unique(field){
+        let tmp = [];
+        let rData = _availableSelfData(this.data);//Array.isArray(this.data) ? this.data : Object.values(this.data);
+        this.data = rData.filter(function (item) {
+            if(item.hasOwnProperty(field)){
+                if(!tmp.includes(item[field])){
+                    tmp.push(item[field]);
+                    return true;
+                }
+            }
+            return false;
+        });
+        return this;
+    }
+
     orderBy(field, sortType){
         sortType = sortType.toLowerCase();
         if(sortType === 'asc' || sortType === "0"){
@@ -103,9 +148,9 @@ class _builder{
     }
 
     groupBy(field){
-        let rDara = Array.isArray(this.data) ? this.data : Object.values(this.data);
+        let rData = _availableSelfData(this.data);//Array.isArray(this.data) ? this.data : Object.values(this.data);
         let tmp = [];
-        rDara.forEach(function (val) {
+        rData.forEach(function (val) {
             if(!Array.isArray(tmp[val[field]])){
                 tmp[val[field]] = [];
             }
@@ -115,15 +160,16 @@ class _builder{
         return this;
     }
 
+    // GET METHODS
     count(){
-        let rDara = Array.isArray(this.data) ? this.data : Object.values(this.data);
-        return rDara.length;
+        let rData = _availableSelfData(this.data);//Array.isArray(this.data) ? this.data : Object.values(this.data);
+        return rData.length;
     }
 
     sum(field){
         let x = 0;
-        let rDara = Array.isArray(this.data) ? this.data : Object.values(this.data);
-        rDara.forEach(element => {
+        let rData = _availableSelfData(this.data);//Array.isArray(this.data) ? this.data : Object.values(this.data);
+        rData.forEach(element => {
             if(element.hasOwnProperty(field)){
                 x += parseFloat(element[field]);
             }
@@ -131,18 +177,37 @@ class _builder{
         return x;
     }
 
+    flatten(){
+        let that = this;
+        let rv = [];
+        let rData = _availableSelfData(this.data);
+        rData.forEach(function (items) {
+            Object.values(items).forEach(function (item) {
+                if(dc_isObject(item) || dc_isArray(item)){
+                    let c =  dc_isObject(item) ? new dcollect([item]) : new dcollect(item);
+                    rv = rv.concat(c.query().flatten());
+                }
+                else{
+                    rv.push(item);
+                }
+            });
+
+        });
+        return rv;
+    }
+
     eq(index){
         return this.data[index];
     }
 
     first(){
-        let rDara = Array.isArray(this.data) ? this.data : Object.values(this.data);
-        return rDara[0];
+        let rData = _availableSelfData(this.data);//Array.isArray(this.data) ? this.data : Object.values(this.data);
+        return rData[0];
     }
 
     last(){
-        let rDara = Array.isArray(this.data) ? this.data : Object.values(this.data);
-        return rDara[rDara.length - 1];
+        let rData = _availableSelfData(this.data);//Array.isArray(this.data) ? this.data : Object.values(this.data);
+        return rData[rData.length - 1];
     }
 
     find(id){
@@ -157,5 +222,40 @@ class _builder{
         return this.get();
     }
 }
+
+let o = [
+    {
+        make: "audi",
+        model: "r8",
+        year: "2012",
+        test:{a:8, b:15, x:{r:18, h:455}}
+    },
+    {
+        make: "audi",
+        model: "rs5",
+        year: "2013"
+    },
+    {
+        make: "ford",
+        model: "mustang",
+        year: "2012"
+    },
+    {
+        make: "ford",
+        model: "fusion",
+        year: "2015"
+    },
+    {
+        make: "kia",
+        model: "optima",
+        year: "2012"
+    }];
+
+let collect = new dcollect(o);
+let filter = collect.query().flatten();
+console.log(filter);
+
+
+
 
 module.exports = dcollect;

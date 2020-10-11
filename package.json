@@ -1,6 +1,6 @@
 {
   "name": "dcollect",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "collection",
   "main": "index.js",
   "scripts": {
