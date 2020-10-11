@@ -157,3 +157,5 @@ class _builder{
         return this.get();
     }
 }
+
+module.exports = dcollect;
